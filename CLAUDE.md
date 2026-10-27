@@ -16,11 +16,12 @@ The repository has no code yet, only `LICENSE` and this file. The first step is 
 - Spring Boot, latest version (Spring Web MVC). Endpoints are hand-written; Spring Authorization Server is not used.
 - Build with Maven (Maven Wrapper).
 - Postgresql will be used as database. In development environment postgres server IP address is 192.168.0.101, port 5432, dtabase name is 'sales', schema name is 'sales_online', user name is 'sales-person', password is 'changeit'.
-- Database object what required for e-commerce should be created.
+- Database object (tables, view, etc.) what required for e-commerce should be created.
 - Please download from Internet aroubd hundreds products of ten categories for testing. Each product should have user guide stored as text data type and will be used in full text search and AI analisys so user guide will be vectorized and embeddings will be stored in the same postgrs database. Required extension was installed. Please be sure that user guide are very detailed.
 - Implement Cache-Aside pattern using in development environment local Redis on the default port 6379. Redis server already installed.
-- Apache Kafka will be used in application as well. In development environment kafka server deployed to localhost. Host is windows 11. Kafka root folder is 'D:\application\kafka_2.13-4.3.1'. Topik name should be 'sales_online'. All e-commerce transactions should be publish to kafka topic. This is not required in general however this project developed for learning and kafka for now just to demonstrate java 25 virtual threads and structured concurrency so transactions should be written in parallel to postgres & kafka.
-- Database and streaming system should be flexible so interfaces should be defined and real implementation classes should be configurable for example instead of postgres & kafka AWS dynamodn & kanisis may be used. 
+- Apache Kafka will be used in application as well to implement asynchronous requests so request should be published to kafka topic and subscriber component should monitor or be notified about new requests, read from topic, process and update postgres database if required. In development environment kafka server deployed to localhost. Host is windows 11. Kafka root folder is 'D:\application\kafka_2.13-4.3.1'. Topik name should be 'sales_online'.
+- Database and streaming components should be flexible and configurable for example instead of postgres & kafka AWS dynamodn & kanisis may be used. It means that databse and streaming component should be plugable but for now only postgresql & kafka implementation in scope.
+- Implement API versioning so end-points should have version in path to allow in future to deploy new version continue supporting previous one.
 - API should support username/password and OAuth2 authentication.
 - Implement error handling.
 - Implement logging using logback. Add logging at DEBUG level to all steps and log objects in context to help resolving issues.
