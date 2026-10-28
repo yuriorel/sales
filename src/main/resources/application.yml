@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: sales
+  profiles:
+    default: dev
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    username: ${SALES_DB_USER:sales-person}
+    password: ${SALES_DB_PASSWORD:changeit}
+  data:
+    redis:
+      host: ${SALES_REDIS_HOST:localhost}
+      port: ${SALES_REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${SALES_KAFKA_BOOTSTRAP:localhost:9092}
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+
+server:
+  port: ${SALES_PORT:9443}
+  ssl:
+    enabled: true
+    key-store: ${SALES_KEYSTORE:file:config/tls/sales-keystore.p12}
+    key-store-password: ${SALES_KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+    key-alias: sales
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

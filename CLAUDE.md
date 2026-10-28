@@ -8,7 +8,20 @@ E-commerce engine, exposed as a REST API and written in Java.
 
 ## Current State
 
-The repository has no code yet, only `LICENSE` and this file. The first step is to write `./docs/PLAN.md` (see Strategy). Once the project is scaffolded, add the build, test, single-test and run commands here, along with a short architecture overview.
+Implementation follows `docs/PLAN.md`; phases are checked off there as they complete.
+
+## Commands
+
+- Build + all tests: `./mvnw verify` (unit tests `*Test` via surefire, integration tests `*IT` via failsafe)
+- Unit tests only: `./mvnw test`
+- Single test: `./mvnw verify -Dit.test=HealthEndpointIT -Dtest=skip -Dsurefire.failIfNoSpecifiedTests=false` (integration) or `./mvnw test -Dtest=ClassName#method` (unit)
+- Generate TLS keystore (once): `./scripts/gen-cert.ps1` -> `config/tls/sales-keystore.p12`, `config/tls/sales.crt`
+- Run: `./mvnw spring-boot:run` -> `https://localhost:9443` (profile `dev` by default)
+- Start Kafka: `D:\application\kafka_2.13-4.3.1\bin\windows\kafka-server-start.bat config\server.properties` (from the Kafka root). On Windows the broker can fail to start with `AccessDeniedException` on a `*.checkpoint` file: clear the read-only flag on the files in its log dir and start again.
+
+## Architecture
+
+Single Maven module, base package `com.example.sales`, packaged by feature (`user`, `catalog`, `search`, `ai`, `cart`, `order`, `messaging`, `seed`, `common`). Each feature has a `domain` layer (records, services, port interfaces) and adapters (`api` v1 controllers, `persistence/postgres`, `messaging/kafka`). Adapters are chosen by `sales.persistence.provider` / `sales.messaging.provider`. Data access uses `JdbcClient` + records (no JPA), migrations use Flyway. Profiles: `dev` (schema `sales_online`, Redis DB 0) and `test` (schema `sales_online_test`, Redis DB 1, plain HTTP on a random port). All JVMs run with `--enable-preview`.
 
 ## Technical Requirements
 

@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Design agreed (assumptions A1-A6 confirmed, OAuth2 broker details received, PostgreSQL feature set added). Implementation starts on the user's go-ahead.**
+Status: **Phase 1 (scaffolding) complete. Phase 2 (database) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -334,14 +334,14 @@ Views: `v_product_catalog`, `v_order_summary`, `v_category_stats` (see 2.4a). In
 Each phase ends with a green `./mvnw verify` and a commit. Check off the criteria as they are met.
 
 ### Phase 1 - Scaffolding
-- [ ] Maven Wrapper, `pom.xml` (Boot 4.1.2 parent, Spring AI BOM, preview flags on compiler/surefire/failsafe/spring-boot plugin)
-- [ ] `.gitignore` (target, IDE files, `config/tls/*.p12`, `.env`, logs, Playwright cache)
-- [ ] `application.yml` + `application-dev.yml` + `application-test.yml`. Secrets read from env vars with dev defaults (`SALES_DB_PASSWORD:changeit`, `OPENAI_API_KEY`)
-- [ ] `logback-spring.xml`: console + rolling file, pattern includes `%X{correlationId}`, DEBUG for `com.example.sales`
-- [ ] Self-signed keystore script `scripts/gen-cert.ps1` (keytool), HTTPS on 9443
-- [ ] Virtual threads enabled; `./mvnw spring-boot:run` starts and `/actuator/health` is UP over HTTPS
-- [ ] Connectivity verified: Postgres (`vector` extension present), Redis, Kafka
-- [ ] CLAUDE.md updated with build/test/run commands and an architecture overview; minimal README
+- [x] Maven Wrapper, `pom.xml` (Boot 4.1.2 parent, Spring AI BOM, preview flags on compiler/surefire/failsafe/spring-boot plugin)
+- [x] `.gitignore` (target, IDE files, `config/tls/*.p12`, `.env`, logs, Playwright cache)
+- [x] `application.yml` + `application-dev.yml` + `application-test.yml`. Secrets read from env vars with dev defaults (`SALES_DB_PASSWORD:changeit`, `OPENAI_API_KEY`)
+- [x] `logback-spring.xml`: console + rolling file, pattern includes `%X{correlationId}`, DEBUG for `com.example.sales`
+- [x] Self-signed keystore script `scripts/gen-cert.ps1` (keytool), HTTPS on 9443
+- [x] Virtual threads enabled; `./mvnw spring-boot:run` starts and `/actuator/health` is UP over HTTPS
+- [x] Connectivity verified: Postgres (`vector` extension present), Redis, Kafka
+- [x] CLAUDE.md updated with build/test/run commands and an architecture overview; minimal README
 
 ### Phase 2 - Database
 - [ ] Flyway `V1__types.sql` (custom domains and composite types), `V2__schema.sql` (tables using domains, composites, arrays and jsonb; constraints, generated tsvector, GIN/HNSW/B-tree indexes), `V3__views.sql`

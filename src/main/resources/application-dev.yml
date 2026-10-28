@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${SALES_DB_HOST:192.168.0.101}:${SALES_DB_PORT:5432}/sales?currentSchema=sales_online
+  data:
+    redis:
+      database: 0
