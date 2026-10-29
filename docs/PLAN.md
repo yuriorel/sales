@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phases 1-2 complete. Phase 3 (cross-cutting) next.**
+Status: **Phases 1-3 complete. Phase 4 (security and users) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -349,10 +349,10 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] Integration tests: migrations apply cleanly on an empty test schema; views return rows; each domain rejects invalid values (bad email, negative price, lower-case currency, zero quantity); composite round-trip (`postal_address` write/read); array filter (`&&`, `@>`) and jsonb containment (`@>`) queries use their GIN indexes (`EXPLAIN` check)
 
 ### Phase 3 - Cross-cutting
-- [ ] `RequestContext` with `ScopedValue`, `CorrelationFilter` (header `X-Correlation-Id`, MDC)
-- [ ] Sealed `SalesException` hierarchy + `@RestControllerAdvice` returning `ProblemDetail` (pattern-matching switch); validation errors mapped
-- [ ] `CacheAside` helper (Redis, TTL, JSON, fall-through on Redis failure)
-- [ ] Unit tests: exception mapping, `CacheAside` hit/miss/evict/Redis-down, correlation filter
+- [x] `RequestContext` with `ScopedValue`, `CorrelationFilter` (header `X-Correlation-Id`, MDC). The user id joins the context in Phase 4, once authentication exists
+- [x] Sealed `SalesException` hierarchy + `@RestControllerAdvice` returning `ProblemDetail` (pattern-matching switch); validation errors mapped
+- [x] `CacheAside` helper (Redis, TTL, JSON, fall-through on Redis failure)
+- [x] Unit tests: exception mapping, `CacheAside` hit/miss/evict/Redis-down, correlation filter
 
 ### Phase 4 - Security and users
 - [ ] Security chain: Basic + JWT resource server, role mapping, public paths
