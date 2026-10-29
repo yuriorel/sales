@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phase 1 (scaffolding) complete. Phase 2 (database) next.**
+Status: **Phases 1-2 complete. Phase 3 (cross-cutting) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -25,7 +25,7 @@ Status: **Phase 1 (scaffolding) complete. Phase 2 (database) next.**
 | A2 | OAuth2 broker: issuer `https://localhost:8443`, JWKS `https://localhost:8443/jwks`. Both can be overridden with `SALES_OAUTH2_ISSUER_URI` / `SALES_OAUTH2_JWK_SET_URI`. Roles come from a configurable claim (default `roles`, values `CUSTOMER` / `ADMIN`). The broker's self-signed certificate is trusted through a Spring Boot SSL bundle (`config/tls/broker-truststore.p12`) that the `JwtDecoder` RestClient uses. |
 | A3 | Integration and E2E tests run against the real dev servers using schema `sales_online_test`, Redis DB index 1 and topic `sales_online_test`. Tests never touch dev data in `sales_online`. |
 | A4 | Base package `com.example.sales`, Maven coordinates `com.example:sales`. |
-| A5 | The `vector` extension is installed in database `sales`, and `sales-person` may create objects in schemas `sales_online` and `sales_online_test`. |
+| A5 | The `vector` extension is installed in database `sales` (schema `public`). A DBA grants `sales-person` `USAGE, CREATE` on schemas `sales_online` and `sales_online_test` and installs `citext` (the account cannot create schemas or extensions itself). The JDBC `currentSchema` is `<schema>,public` so the `vector` and `citext` types resolve. |
 | A6 | Server port **`9443`** (HTTPS only, self-signed PKCS12 keystore generated with `keytool`). The OAuth2 broker already uses 8443 on the same host, so this API moved off that port. |
 
 ## 1. Technology Stack (latest stable as of 2026-10)
@@ -140,7 +140,7 @@ Cached: `product:{id}`, `category:all`, `product-page:{category}:{page}:{size}` 
 
 ### 2.7 Search and AI
 
-- Full-text: a generated `tsvector` column on `products` (name A, brand/category B, description C, user_guide D) with a GIN index. Queried with `websearch_to_tsquery` + `ts_rank_cd`.
+- Full-text: a generated `tsvector` column on `products` (name A, brand B, description C, user_guide D; a generated column cannot read the category table) with a GIN index. Queried with `websearch_to_tsquery` + `ts_rank_cd`.
 - Semantic: the guide is split into ~1,000-char chunks with 150-char overlap, each embedded and stored as `vector(1536)` with an HNSW (`vector_cosine_ops`) index. The query embedding is matched by cosine distance and grouped per product.
 - Hybrid: both run in parallel (structured concurrency) and are merged with Reciprocal Rank Fusion.
 - `POST /api/v1/ai/ask {question, productId?}`: retrieves the top-k chunks (optionally limited to one product) and has `ChatClient` answer from that context only. The response lists the source products and chunks.
@@ -344,9 +344,9 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] CLAUDE.md updated with build/test/run commands and an architecture overview; minimal README
 
 ### Phase 2 - Database
-- [ ] Flyway `V1__types.sql` (custom domains and composite types), `V2__schema.sql` (tables using domains, composites, arrays and jsonb; constraints, generated tsvector, GIN/HNSW/B-tree indexes), `V3__views.sql`
-- [ ] Flyway targets schema `sales_online` (dev) / `sales_online_test` (test)
-- [ ] Integration tests: migrations apply cleanly on an empty test schema; views return rows; each domain rejects invalid values (bad email, negative price, lower-case currency, zero quantity); composite round-trip (`postal_address` write/read); array filter (`&&`, `@>`) and jsonb containment (`@>`) queries use their GIN indexes (`EXPLAIN` check)
+- [x] Flyway `V1__types.sql` (custom domains and composite types), `V2__schema.sql` (tables using domains, composites, arrays and jsonb; constraints, generated tsvector, GIN/HNSW/B-tree indexes), `V3__views.sql`
+- [x] Flyway targets schema `sales_online` (dev) / `sales_online_test` (test)
+- [x] Integration tests: migrations apply cleanly on an empty test schema; views return rows; each domain rejects invalid values (bad email, negative price, lower-case currency, zero quantity); composite round-trip (`postal_address` write/read); array filter (`&&`, `@>`) and jsonb containment (`@>`) queries use their GIN indexes (`EXPLAIN` check)
 
 ### Phase 3 - Cross-cutting
 - [ ] `RequestContext` with `ScopedValue`, `CorrelationFilter` (header `X-Correlation-Id`, MDC)
