@@ -40,17 +40,25 @@ public class CorrelationFilter extends OncePerRequestFilter {
         MDC.put(MDC_KEY, correlationId);
         try {
             log.debug("Request started: {} {} query={}", request.getMethod(), request.getRequestURI(), request.getQueryString());
-            ScopedValue.where(RequestContext.CURRENT, new RequestContext(correlationId)).call(() -> {
+            continueWith(new RequestContext(correlationId, null), chain, request, response);
+            log.debug("Request finished: {} {} status={}", request.getMethod(), request.getRequestURI(), response.getStatus());
+        } finally {
+            MDC.remove(MDC_KEY);
+        }
+    }
+
+    /// Runs the rest of the filter chain with `context` bound as [RequestContext#CURRENT].
+    static void continueWith(RequestContext context, FilterChain chain, HttpServletRequest request,
+                             HttpServletResponse response) throws ServletException, IOException {
+        try {
+            ScopedValue.where(RequestContext.CURRENT, context).call(() -> {
                 chain.doFilter(request, response);
                 return null;
             });
-            log.debug("Request finished: {} {} status={}", request.getMethod(), request.getRequestURI(), response.getStatus());
         } catch (IOException | ServletException | RuntimeException e) {
             throw e;
         } catch (Exception e) {
             throw new ServletException(e);
-        } finally {
-            MDC.remove(MDC_KEY);
         }
     }
 }

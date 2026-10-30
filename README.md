@@ -5,8 +5,9 @@ E-commerce engine exposed as a versioned REST API. Java 25, Spring Boot 4.1, Pos
 ## Run
 
 ```powershell
-./scripts/gen-cert.ps1      # once: self-signed keystore in config/tls/
-./mvnw spring-boot:run      # https://localhost:9443
+./scripts/gen-cert.ps1            # once: self-signed keystore in config/tls/
+./scripts/import-broker-cert.ps1   # once, broker running: trust the OAuth2 broker certificate
+./mvnw spring-boot:run            # https://localhost:9443
 ```
 
 Health: `https://localhost:9443/actuator/health`

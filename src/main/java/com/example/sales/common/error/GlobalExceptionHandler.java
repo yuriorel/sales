@@ -9,6 +9,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -54,6 +58,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.debug("Data integrity violation sqlState={} mapped to {}: {}",
                 sqlState, problem.getStatus(), ex.getMostSpecificCause().getMessage());
         return respond(problem);
+    }
+
+    /// Reached from the security filter chain's entry point; see `SecurityConfig`.
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<Object> handleAuthentication(AuthenticationException ex) {
+        var detail = switch (ex) {
+            case OAuth2AuthenticationException _ -> "Invalid or expired bearer token";
+            case BadCredentialsException _ -> "Invalid username or password";
+            default -> "Authentication required";
+        };
+        log.debug("Authentication failed ({}): {}", ex.getClass().getSimpleName(), ex.getMessage());
+        var problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, detail);
+        problem.setProperty("correlationId", RequestContext.currentCorrelationId());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"sales\", Bearer")
+                .body(problem);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
+        log.debug("Access denied: {}", ex.getMessage());
+        return respond(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied"));
     }
 
     @ExceptionHandler(Exception.class)

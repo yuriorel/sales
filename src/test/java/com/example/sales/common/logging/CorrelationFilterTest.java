@@ -24,7 +24,7 @@ class CorrelationFilterTest {
         run(request);
 
         assertThat(response.getHeader(CorrelationFilter.HEADER)).isEqualTo("abc-123");
-        assertThat(boundContext.get()).isEqualTo(new RequestContext("abc-123"));
+        assertThat(boundContext.get()).isEqualTo(new RequestContext("abc-123", null));
         assertThat(mdcValue.get()).isEqualTo("abc-123");
     }
 

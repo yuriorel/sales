@@ -6,10 +6,15 @@ import java.util.Optional;
 /// (or a Kafka message). Structured-concurrency subtasks inherit the binding.
 ///
 /// @param correlationId id that ties together all log lines of one request
-public record RequestContext(String correlationId) {
+/// @param user          name of the authenticated caller, `null` until authentication succeeds
+public record RequestContext(String correlationId, String user) {
 
     /// The binding for the current request.
     public static final ScopedValue<RequestContext> CURRENT = ScopedValue.newInstance();
+
+    public RequestContext withUser(String user) {
+        return new RequestContext(correlationId, user);
+    }
 
     /// Returns the context of the current request, if one is bound.
     public static Optional<RequestContext> current() {

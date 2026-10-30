@@ -16,6 +16,7 @@ Implementation follows `docs/PLAN.md`; phases are checked off there as they comp
 - Unit tests only: `./mvnw test`
 - Single test: `./mvnw verify -Dit.test=HealthEndpointIT -Dtest=skip -Dsurefire.failIfNoSpecifiedTests=false` (integration) or `./mvnw test -Dtest=ClassName#method` (unit)
 - Generate TLS keystore (once): `./scripts/gen-cert.ps1` -> `config/tls/sales-keystore.p12`, `config/tls/sales.crt`
+- Trust the OAuth2 broker (once, broker running on `https://localhost:8443`): `./scripts/import-broker-cert.ps1` -> `config/tls/broker-truststore.p12`. Integration tests sign their own JWTs (`support/TestJwt`) but the SSL bundle file must exist
 - Run: `./mvnw spring-boot:run` -> `https://localhost:9443` (profile `dev` by default)
 - Start Kafka: `D:\application\kafka_2.13-4.3.1\bin\windows\kafka-server-start.bat config\server.properties` (from the Kafka root). On Windows the broker can fail to start with `AccessDeniedException` on a `*.checkpoint` file: clear the read-only flag on the files in its log dir and start again.
 

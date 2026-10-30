@@ -23,6 +23,20 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SALES_OAUTH2_ISSUER_URI:https://localhost:8443}
+          jwk-set-uri: ${SALES_OAUTH2_JWK_SET_URI:https://localhost:8443/jwks}
+  ssl:
+    bundle:
+      jks:
+        oauth2-broker:
+          truststore:
+            location: ${SALES_BROKER_TRUSTSTORE:file:config/tls/broker-truststore.p12}
+            password: ${SALES_BROKER_TRUSTSTORE_PASSWORD:changeit}
+            type: PKCS12
 
 server:
   port: ${SALES_PORT:9443}

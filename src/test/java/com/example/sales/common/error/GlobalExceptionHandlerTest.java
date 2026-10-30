@@ -8,7 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +28,7 @@ import java.sql.SQLException;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,6 +47,10 @@ class GlobalExceptionHandlerTest {
             unique,          409, The request conflicts with existing data
             check,           400, The request contains a value that violates a data constraint
             unexpected,      500, Unexpected server error
+            anonymous,       401, Authentication required
+            bad-credentials, 401, Invalid username or password
+            bad-token,       401, Invalid or expired bearer token
+            denied,          403, Access denied
             """)
     void mapsExceptionToProblemDetail(String kind, int status, String detail) throws Exception {
         mvc.perform(get("/throw/{kind}", kind).header(CorrelationFilter.HEADER, "corr-1"))
@@ -50,6 +60,12 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.detail").value(detail))
                 .andExpect(jsonPath("$.instance").value("/throw/" + kind))
                 .andExpect(jsonPath("$.correlationId").value("corr-1"));
+    }
+
+    @Test
+    void unauthorizedAdvertisesBothSchemes() throws Exception {
+        mvc.perform(get("/throw/anonymous"))
+                .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"sales\", Bearer"));
     }
 
     @Test
@@ -102,6 +118,10 @@ class GlobalExceptionHandlerTest {
                 case "validation" -> new ValidationException("quantity", "Quantity exceeds stock");
                 case "unique" -> new DataIntegrityViolationException("dup", new SQLException("dup", "23505"));
                 case "check" -> new DataIntegrityViolationException("check", new SQLException("check", "23514"));
+                case "anonymous" -> new InsufficientAuthenticationException("Full authentication is required");
+                case "bad-credentials" -> new BadCredentialsException("Bad credentials");
+                case "bad-token" -> new InvalidBearerTokenException("Jwt expired at 2026-01-01T00:00:00Z");
+                case "denied" -> new AccessDeniedException("Access Denied");
                 default -> new IllegalStateException("boom");
             };
         }
