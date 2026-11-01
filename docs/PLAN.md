@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phases 1-4 complete. Phase 5 (catalog and inventory) next.**
+Status: **Phases 1-5 complete. Phase 6 (messaging) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -127,7 +127,7 @@ Java mapping stays simple: JSONB maps to/from records with Jackson (`?::jsonb` p
 ### 2.5 Cache-aside (Redis)
 
 `CacheAside.get(key, type, ttl, loader)`: read Redis. On a miss, call the loader (DB), write with a TTL, and return. Writes go to the DB first, then evict the key.
-Cached: `product:{id}`, `category:all`, `product-page:{category}:{page}:{size}` (short TTL). Redis failures are logged and fall through to the DB.
+Cached: `product:{id}` (details, 10 min), `category:all` (30 min), `product-page:{filters}:{sort}:{page}:{size}` (60 s, not evicted). Redis failures are logged and fall through to the DB.
 
 ### 2.6 Kafka flow
 
@@ -168,7 +168,7 @@ Cached: `product:{id}`, `category:all`, `product-page:{category}:{page}:{size}` 
 | GET | `/api/v1/admin/stats/categories` | ADMIN | from `v_category_stats` |
 | GET | `/api/v1/products/{id}` | public | cached, includes stock |
 | GET | `/api/v1/products/{id}/guide` | public | full user guide (text/markdown) |
-| POST/PUT/DELETE | `/api/v1/products[/{id}]` | ADMIN | publishes `ProductGuideChanged` |
+| POST/PUT/DELETE | `/api/v1/products[/{id}]` | ADMIN | publishes `ProductGuideChanged` (from Phase 6) |
 | PUT | `/api/v1/products/{id}/inventory` | ADMIN | set stock |
 | GET | `/api/v1/search?q=&mode=fulltext\|semantic\|hybrid&limit=` | public | |
 | POST | `/api/v1/ai/ask` | user | RAG answer with sources |
@@ -361,11 +361,11 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] Unit/slice tests: 401 without credentials, 401 on wrong issuer/expired token, 403 on admin endpoints for CUSTOMER, Basic login, mock-JWT login (`jwt()` post-processor), role claim mapping
 
 ### Phase 5 - Catalog and inventory
-- [ ] Ports + Postgres adapters (`JdbcClient`, text-block SQL, record mapping)
-- [ ] Category/product/inventory services and v1 controllers with cache-aside and eviction
-- [ ] Product list filters: tags (array `&&` / `@>`), attributes (jsonb `@>`); admin category stats from `v_category_stats`
-- [ ] Product details uses structured concurrency (product, stock, guide summary)
-- [ ] Tests: service unit tests (mocked ports), `@WebMvcTest` controller tests, repository integration tests
+- [x] Ports + Postgres adapters (`JdbcClient`, text-block SQL, record mapping)
+- [x] Category/product/inventory services and v1 controllers with cache-aside and eviction (`product:{id}` evicted on product and stock changes; list pages expire after 60 s)
+- [x] Product list filters: tags (array `&&` / `@>`), attributes (jsonb `@>`); admin category stats from `v_category_stats`
+- [x] Product details uses structured concurrency (product, stock, guide summary). Subtasks return `Optional`s, because cancelling a subtask mid-query closes its JDBC connection
+- [x] Tests: service unit tests (mocked ports), `@WebMvcTest` controller tests, repository integration tests, catalog API integration test
 
 ### Phase 6 - Messaging
 - [ ] Sealed `SalesEvent` records, `EventPublisher` port, Kafka adapter, topic + DLT beans

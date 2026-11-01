@@ -32,8 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /// The security filter chain end to end: HTTP Basic against the test schema and bearer
-/// tokens signed by [TestJwt]. Admin paths have no handlers before Phase 5, so a request
-/// that passes authorization is checked only for "not 401/403".
+/// tokens signed by [TestJwt]. A request that should pass authorization is checked only
+/// for "not 401/403", so these tests do not depend on the data behind the endpoint.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
