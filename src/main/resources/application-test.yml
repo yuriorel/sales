@@ -1,6 +1,8 @@
 sales:
   db:
     schema: sales_online_test
+  messaging:
+    topic: sales_online_test
 
 spring:
   data:
@@ -8,6 +10,9 @@ spring:
       database: 1
   flyway:
     clean-disabled: false
+  kafka:
+    consumer:
+      group-id: sales-test
 
 server:
   port: 0

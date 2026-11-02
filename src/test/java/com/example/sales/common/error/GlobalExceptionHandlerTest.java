@@ -1,6 +1,8 @@
 package com.example.sales.common.error;
 
 import com.example.sales.common.logging.CorrelationFilter;
+import com.example.sales.messaging.domain.EventPublishingException;
+import com.example.sales.messaging.domain.ProductGuideChanged;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -51,6 +53,7 @@ class GlobalExceptionHandlerTest {
             bad-credentials, 401, Invalid username or password
             bad-token,       401, Invalid or expired bearer token
             denied,          403, Access denied
+            broker-down,     503, 'The message broker is unavailable, please retry later'
             """)
     void mapsExceptionToProblemDetail(String kind, int status, String detail) throws Exception {
         mvc.perform(get("/throw/{kind}", kind).header(CorrelationFilter.HEADER, "corr-1"))
@@ -122,6 +125,7 @@ class GlobalExceptionHandlerTest {
                 case "bad-credentials" -> new BadCredentialsException("Bad credentials");
                 case "bad-token" -> new InvalidBearerTokenException("Jwt expired at 2026-01-01T00:00:00Z");
                 case "denied" -> new AccessDeniedException("Access Denied");
+                case "broker-down" -> new EventPublishingException(ProductGuideChanged.of(1), new IllegalStateException("timeout"));
                 default -> new IllegalStateException("boom");
             };
         }

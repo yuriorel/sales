@@ -8,10 +8,10 @@ import com.example.sales.catalog.domain.ProductQuery;
 import com.example.sales.catalog.domain.ProductRepository;
 import com.example.sales.catalog.domain.ProductSummary;
 import com.example.sales.common.api.Page;
+import com.example.sales.common.config.PostgresAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.stereotype.Repository;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -29,7 +29,7 @@ import java.util.Optional;
 /// [ProductRepository] on Postgres. Reads go through the `v_product_catalog` view.
 /// Tags use the array operators `&&` (any) and `@>` (all), attributes use `jsonb`
 /// containment `@>`, and dimensions are written as a `dimensions_cm` composite.
-@Repository
+@PostgresAdapter
 class PostgresProductRepository implements ProductRepository {
 
     private static final Logger log = LoggerFactory.getLogger(PostgresProductRepository.class);

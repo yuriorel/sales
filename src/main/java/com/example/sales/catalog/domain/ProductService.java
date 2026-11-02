@@ -4,6 +4,8 @@ import com.example.sales.common.api.Page;
 import com.example.sales.common.cache.CacheAside;
 import com.example.sales.common.concurrency.Structured;
 import com.example.sales.common.error.NotFoundException;
+import com.example.sales.messaging.domain.EventPublisher;
+import com.example.sales.messaging.domain.ProductGuideChanged;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.time.Duration;
 ///
 /// `product:{id}` holds the details and is evicted on every product or stock change.
 /// List pages (`product-page:...`) are not evicted; their short TTL bounds staleness.
+/// Creating or updating a product publishes [ProductGuideChanged], so the guide is embedded again.
 @Service
 public class ProductService {
 
@@ -27,11 +30,14 @@ public class ProductService {
     private final ProductRepository products;
     private final InventoryRepository inventory;
     private final CacheAside cache;
+    private final EventPublisher events;
 
-    public ProductService(ProductRepository products, InventoryRepository inventory, CacheAside cache) {
+    public ProductService(ProductRepository products, InventoryRepository inventory, CacheAside cache,
+                          EventPublisher events) {
         this.products = products;
         this.inventory = inventory;
         this.cache = cache;
+        this.events = events;
     }
 
     public static String cacheKey(long productId) {
@@ -57,6 +63,7 @@ public class ProductService {
         // a row cached under a recycled id (for example after a schema reset) must not survive
         cache.evict(cacheKey(id));
         log.debug("Created product {}", id);
+        events.publish(ProductGuideChanged.of(id));
         return details(id);
     }
 
@@ -66,6 +73,7 @@ public class ProductService {
             throw new NotFoundException("Product", id);
         }
         cache.evict(cacheKey(id));
+        events.publish(ProductGuideChanged.of(id));
         return details(id);
     }
 

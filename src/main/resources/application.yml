@@ -20,6 +20,16 @@ spring:
       port: ${SALES_REDIS_PORT:6379}
   kafka:
     bootstrap-servers: ${SALES_KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      group-id: sales
+      auto-offset-reset: earliest
+    producer:
+      acks: all
+      properties:
+        # fail a publish within seconds when the broker is down, instead of blocking the request for a minute
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:}
@@ -37,6 +47,13 @@ spring:
             location: ${SALES_BROKER_TRUSTSTORE:file:config/tls/broker-truststore.p12}
             password: ${SALES_BROKER_TRUSTSTORE_PASSWORD:changeit}
             type: PKCS12
+
+sales:
+  persistence:
+    provider: ${SALES_PERSISTENCE_PROVIDER:postgres}
+  messaging:
+    provider: ${SALES_MESSAGING_PROVIDER:kafka}
+    topic: sales_online
 
 server:
   port: ${SALES_PORT:9443}

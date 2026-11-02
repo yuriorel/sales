@@ -1,5 +1,6 @@
 package com.example.sales.user.persistence.postgres;
 
+import com.example.sales.common.config.PostgresAdapter;
 import com.example.sales.user.domain.AuthProvider;
 import com.example.sales.user.domain.PostalAddress;
 import com.example.sales.user.domain.Role;
@@ -8,7 +9,6 @@ import com.example.sales.user.domain.UserPrincipal;
 import com.example.sales.user.domain.UserRepository;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.stereotype.Repository;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 /// [UserRepository] on Postgres. The `postal_address` composite is expanded with
 /// `(default_address).field` on read and built with `row(...)::postal_address` on write.
-@Repository
+@PostgresAdapter
 class PostgresUserRepository implements UserRepository {
 
     private static final String COLUMNS = """

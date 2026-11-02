@@ -2,13 +2,13 @@ package com.example.sales.catalog.persistence.postgres;
 
 import com.example.sales.catalog.domain.Inventory;
 import com.example.sales.catalog.domain.InventoryRepository;
+import com.example.sales.common.config.PostgresAdapter;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
-@Repository
+@PostgresAdapter
 class PostgresInventoryRepository implements InventoryRepository {
 
     private final JdbcClient jdbc;

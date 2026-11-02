@@ -4,9 +4,9 @@ import com.example.sales.catalog.domain.Category;
 import com.example.sales.catalog.domain.CategoryData;
 import com.example.sales.catalog.domain.CategoryRepository;
 import com.example.sales.catalog.domain.CategoryStats;
+import com.example.sales.common.config.PostgresAdapter;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.stereotype.Repository;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Repository
+@PostgresAdapter
 class PostgresCategoryRepository implements CategoryRepository {
 
     private static final RowMapper<Category> CATEGORY = (rs, _) ->

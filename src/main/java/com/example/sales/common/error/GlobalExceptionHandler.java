@@ -1,6 +1,7 @@
 package com.example.sales.common.error;
 
 import com.example.sales.common.logging.RequestContext;
+import com.example.sales.messaging.domain.EventPublishingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -58,6 +59,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.debug("Data integrity violation sqlState={} mapped to {}: {}",
                 sqlState, problem.getStatus(), ex.getMostSpecificCause().getMessage());
         return respond(problem);
+    }
+
+    /// The change is stored, but its asynchronous follow-up could not be queued.
+    @ExceptionHandler(EventPublishingException.class)
+    ResponseEntity<Object> handleEventPublishing(EventPublishingException ex) {
+        log.error("Event publishing failed", ex);
+        return respond(ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+                "The message broker is unavailable, please retry later"));
     }
 
     /// Reached from the security filter chain's entry point; see `SecurityConfig`.

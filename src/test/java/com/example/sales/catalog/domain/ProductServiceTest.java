@@ -4,6 +4,8 @@ import com.example.sales.catalog.CatalogFixtures;
 import com.example.sales.common.api.Page;
 import com.example.sales.common.cache.CacheAside;
 import com.example.sales.common.error.NotFoundException;
+import com.example.sales.messaging.domain.EventPublisher;
+import com.example.sales.messaging.domain.ProductGuideChanged;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.type.TypeReference;
@@ -20,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,7 +34,8 @@ class ProductServiceTest {
     final ProductRepository products = mock(ProductRepository.class);
     final InventoryRepository inventory = mock(InventoryRepository.class);
     final CacheAside cache = mock(CacheAside.class);
-    final ProductService service = new ProductService(products, inventory, cache);
+    final EventPublisher events = mock(EventPublisher.class);
+    final ProductService service = new ProductService(products, inventory, cache, events);
 
     final Product product = new Product(7, "SKU-7", 1, "audio", "Audio", "Speaker", "Acme", "Loud",
             new BigDecimal("99.90"), "USD", new BigDecimal("4.5"), List.of("bluetooth"), List.of(), null, Map.of(),
@@ -87,6 +91,7 @@ class ProductServiceTest {
 
         assertThat(service.create(data).product()).isEqualTo(product);
         verify(cache).evict("product:7");
+        verify(events).publish(argThat(event -> event instanceof ProductGuideChanged(_, _, var productId) && productId == 7));
     }
 
     @Test
@@ -99,6 +104,7 @@ class ProductServiceTest {
         service.update(7, data);
 
         verify(cache).evict("product:7");
+        verify(events).publish(argThat(event -> event instanceof ProductGuideChanged(_, _, var productId) && productId == 7));
     }
 
     @Test
@@ -108,6 +114,7 @@ class ProductServiceTest {
         assertThatThrownBy(() -> service.update(8, CatalogFixtures.product("SKU-8", 1, "1", List.of(), Map.of())))
                 .isInstanceOf(NotFoundException.class);
         verify(cache, never()).evict(any(String[].class));
+        verify(events, never()).publish(any());
     }
 
     @Test

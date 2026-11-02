@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phases 1-5 complete. Phase 6 (messaging) next.**
+Status: **Phases 1-6 complete. Phase 7 (cart and orders) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -23,7 +23,7 @@ Status: **Phases 1-5 complete. Phase 6 (messaging) next.**
 |---|---|
 | A1 | **OpenAI** for both embeddings (`text-embedding-3-small`, 1536 dims) and chat (`gpt-4.1-mini`), via Spring AI. Key from env var `OPENAI_API_KEY`. Swapping providers changes only config and the vector dimension. |
 | A2 | OAuth2 broker: issuer `https://localhost:8443`, JWKS `https://localhost:8443/jwks`. Both can be overridden with `SALES_OAUTH2_ISSUER_URI` / `SALES_OAUTH2_JWK_SET_URI`. Roles come from the token's `scope` claim: every token user is `CUSTOMER`, and `ADMIN` in `scope` adds `ADMIN`. The broker decides who may get that scope; broker users and the `users.roles` column are not synchronised. The broker's self-signed certificate is trusted through a Spring Boot SSL bundle (`config/tls/broker-truststore.p12`) that the `JwtDecoder` RestClient uses. |
-| A3 | Integration and E2E tests run against the real dev servers using schema `sales_online_test`, Redis DB index 1 and topic `sales_online_test`. Tests never touch dev data in `sales_online`. |
+| A3 | Integration and E2E tests run against the real dev servers using schema `sales_online_test`, Redis DB index 1 and topic `sales_online_test` (`MessagingIT` uses its own topic `sales_online_it`). Tests never touch dev data in `sales_online`. |
 | A4 | Base package `com.example.sales`, Maven coordinates `com.example:sales`. |
 | A5 | The `vector` extension is installed in database `sales` (schema `public`). A DBA grants `sales-person` `USAGE, CREATE` on schemas `sales_online` and `sales_online_test` and installs `citext` (the account cannot create schemas or extensions itself). The JDBC `currentSchema` is `<schema>,public` so the `vector` and `citext` types resolve. |
 | A6 | Server port **`9443`** (HTTPS only, self-signed PKCS12 keystore generated with `keytool`). The OAuth2 broker already uses 8443 on the same host, so this API moved off that port. |
@@ -135,7 +135,7 @@ Cached: `product:{id}` (details, 10 min), `category:all` (30 min), `product-page
 - Value = JSON of the sealed `SalesEvent`, with the type in Jackson `@JsonTypeInfo`. Headers carry the correlation id.
 - `POST /api/v1/orders`: validates the cart, inserts the order `PENDING` and its items (price snapshot), clears the cart, publishes `OrderPlaced`, and returns `202 Accepted` with `Location: /api/v1/orders/{id}`.
 - The listener processes the event in one DB transaction: reserves stock (`UPDATE inventory SET quantity = quantity - n WHERE quantity >= n`), calls the mock payment, and sets the order to `CONFIRMED` or `REJECTED` with a reason.
-- Idempotency: table `processed_events(event_id)`, so a duplicate delivery is a no-op. Retry uses `DefaultErrorHandler` with backoff, then dead-letter topic `sales_online.DLT`.
+- Idempotency: table `processed_events(event_id)`, so a duplicate delivery is a no-op. Retry uses `DefaultErrorHandler` with backoff, then dead-letter topic `sales_online-dlt`.
 - `ProductGuideChanged`: the listener re-chunks and re-embeds the guide and replaces the rows in `product_guide_chunks`.
 
 ### 2.7 Search and AI
@@ -168,7 +168,7 @@ Cached: `product:{id}` (details, 10 min), `category:all` (30 min), `product-page
 | GET | `/api/v1/admin/stats/categories` | ADMIN | from `v_category_stats` |
 | GET | `/api/v1/products/{id}` | public | cached, includes stock |
 | GET | `/api/v1/products/{id}/guide` | public | full user guide (text/markdown) |
-| POST/PUT/DELETE | `/api/v1/products[/{id}]` | ADMIN | publishes `ProductGuideChanged` (from Phase 6) |
+| POST/PUT/DELETE | `/api/v1/products[/{id}]` | ADMIN | POST/PUT publish `ProductGuideChanged` |
 | PUT | `/api/v1/products/{id}/inventory` | ADMIN | set stock |
 | GET | `/api/v1/search?q=&mode=fulltext\|semantic\|hybrid&limit=` | public | |
 | POST | `/api/v1/ai/ask` | user | RAG answer with sources |
@@ -368,10 +368,10 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] Tests: service unit tests (mocked ports), `@WebMvcTest` controller tests, repository integration tests, catalog API integration test
 
 ### Phase 6 - Messaging
-- [ ] Sealed `SalesEvent` records, `EventPublisher` port, Kafka adapter, topic + DLT beans
-- [ ] `KafkaEventListener` -> `EventDispatcher` (pattern-matching switch), `processed_events` idempotency, correlation id from headers bound as `ScopedValue`
-- [ ] Adapters selected by `sales.messaging.provider` / `sales.persistence.provider`. The context fails fast with a clear message for an unknown provider
-- [ ] Tests: dispatcher unit tests per event type, duplicate-event no-op, integration test publish -> consume against local Kafka
+- [x] Sealed `SalesEvent` records, `EventPublisher` port, Kafka adapter, topic + DLT beans (`<topic>-dlt`, the spring-kafka 4 default). Publishing waits for the broker ack; a failure is a 503
+- [x] `KafkaEventListener` -> `EventDispatcher` (pattern-matching switch), `processed_events` idempotency, correlation id from headers bound as `ScopedValue`
+- [x] Adapters selected by `sales.messaging.provider` / `sales.persistence.provider`. The context fails fast with a clear message for an unknown provider (bound before any bean is created)
+- [x] Tests: dispatcher unit tests per event type, duplicate-event no-op, integration test publish -> consume against local Kafka (retry then dead letter, invalid JSON straight to dead letter). `OrderProcessor` and `GuideIndexer` are log-only until Phases 7 and 8
 
 ### Phase 7 - Cart and orders
 - [ ] Cart endpoints and service (stock check on add)
