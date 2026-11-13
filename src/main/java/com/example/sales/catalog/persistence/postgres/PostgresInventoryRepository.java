@@ -6,7 +6,10 @@ import com.example.sales.common.config.PostgresAdapter;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @PostgresAdapter
 class PostgresInventoryRepository implements InventoryRepository {
@@ -41,5 +44,27 @@ class PostgresInventoryRepository implements InventoryRepository {
                         rs.getInt("quantity"),
                         rs.getObject("updated_at", OffsetDateTime.class).toInstant()))
                 .optional();
+    }
+
+    @Override
+    public Map<Long, Integer> lock(Collection<Long> productIds) {
+        // a fixed lock order keeps two orders with the same products from deadlocking
+        return jdbc.sql("""
+                        select product_id, quantity from inventory
+                        where product_id = any(:productIds)
+                        order by product_id
+                        for update""")
+                .param("productIds", productIds.toArray(Long[]::new))
+                .query((rs, _) -> Map.entry(rs.getLong("product_id"), rs.getInt("quantity")))
+                .list().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    @Override
+    public void adjust(long productId, int delta) {
+        jdbc.sql("update inventory set quantity = quantity + :delta, updated_at = now() where product_id = :productId")
+                .param("productId", productId)
+                .param("delta", delta)
+                .update();
     }
 }

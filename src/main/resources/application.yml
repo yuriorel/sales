@@ -54,6 +54,9 @@ sales:
   messaging:
     provider: ${SALES_MESSAGING_PROVIDER:kafka}
     topic: sales_online
+  payment:
+    # the mock payment gateway declines larger charges
+    decline-above: 10000
 
 server:
   port: ${SALES_PORT:9443}

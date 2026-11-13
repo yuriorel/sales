@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phases 1-6 complete. Phase 7 (cart and orders) next.**
+Status: **Phases 1-7 complete. Phase 8 (seed data, search and AI) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -194,7 +194,7 @@ classDiagram
         +UUID eventId()
         +Instant occurredAt()
     }
-    class OrderPlaced { <<record>> UUID orderId; UUID userId }
+    class OrderPlaced { <<record>> UUID orderId }
     class OrderCancelled { <<record>> UUID orderId; String reason }
     class ProductGuideChanged { <<record>> long productId }
     SalesEvent <|.. OrderPlaced
@@ -374,9 +374,10 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] Tests: dispatcher unit tests per event type, duplicate-event no-op, integration test publish -> consume against local Kafka (retry then dead letter, invalid JSON straight to dead letter). `OrderProcessor` and `GuideIndexer` are log-only until Phases 7 and 8
 
 ### Phase 7 - Cart and orders
-- [ ] Cart endpoints and service (stock check on add)
-- [ ] Order placement (202) with composite shipping address (request or user default), `OrderProcessor` (stock reservation, mock payment with jsonb `gateway_response`, status + `status_history` jsonb append), cancel (releases stock), ownership checks
-- [ ] Tests: unit tests for status transitions, insufficient stock, payment declined, cancel rules; integration test of the full async flow (Awaitility)
+- [x] Cart endpoints and service (stock check on add and on quantity change)
+- [x] Order placement (202) with composite shipping address (request or user default), `OrderProcessor` (stock reservation, mock payment with jsonb `gateway_response`, status + `status_history` jsonb append), cancel (releases stock), ownership checks
+- [x] `OrderPlaced` is published inside the placing transaction (broker down: order rolled back, cart kept). An event that arrives before the commit finds no order and is retried. Inventory rows are locked in product-id order (`select ... for update`), so concurrent orders cannot oversell or deadlock. The mock gateway declines charges above `sales.payment.decline-above` (10000)
+- [x] Tests: unit tests for status transitions, insufficient stock, payment declined, cancel rules; integration test of the full async flow (Awaitility)
 
 ### Phase 8 - Seed data, search and AI
 - [ ] `SeedDataGenerator`: download from DummyJSON, map to 10 categories, generate detailed guides, write `seed/products.json` (committed; about 150-190 products). Source fields map to `tags` (array), `images` (array), `dimensions` (composite), and weight/warranty/shipping/return policy into `attributes` (jsonb)
