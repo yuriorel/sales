@@ -1,6 +1,8 @@
 sales:
   db:
     schema: sales_online
+  seed:
+    enabled: true
 
 spring:
   data:

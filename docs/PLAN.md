@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phases 1-7 complete. Phase 8 (seed data, search and AI) next.**
+Status: **Phases 1-8 complete. Phase 9 (OpenAPI, Swagger and versioning) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -88,7 +88,7 @@ com.example.sales
 | Virtual threads | `spring.threads.virtual.enabled=true` (Tomcat requests, Kafka listener, `@Async`). Seed embedding runs on `Executors.newVirtualThreadPerTaskExecutor()`. |
 | Structured concurrency (preview) | Hybrid search runs full-text and vector search in parallel with `StructuredTaskScope.open()`. Product details load product, stock and guide summary in parallel. |
 | Records | All DTOs, domain models, events, config properties (`@ConfigurationProperties` records), DB row mappings. |
-| Sealed classes/interfaces | `SalesEvent` (OrderPlaced, OrderCancelled, ProductGuideChanged), `SalesException` hierarchy, `SearchMode`, `PaymentResult` (Approved / Declined). |
+| Sealed classes/interfaces | `SalesEvent` (OrderPlaced, OrderCancelled, ProductGuideChanged), `SalesException` hierarchy, `PaymentResult` (Approved / Declined). `SearchMode` is a plain enum. |
 | `var` | Local variables throughout. |
 | Switch expressions | Status transitions, mapping exceptions to HTTP status. |
 | Pattern matching (`switch`, `instanceof`) | `EventDispatcher` switch over sealed `SalesEvent` with record deconstruction. Error advice. Authentication principal (`Jwt` vs `UserDetails`). |
@@ -153,7 +153,9 @@ Cached: `product:{id}` (details, 10 min), `category:all` (30 min), `product-page
 3. Generates a detailed user guide per product with the chat model, using a fixed structured prompt (text block). Sections: overview, box contents, specifications, setup, operation, advanced features, maintenance, troubleshooting (table), safety, warranty, FAQ. Target 1,500-3,000 words. Requests run on virtual threads with a concurrency limit.
 4. Writes `src/main/resources/seed/products.json`, which is committed. The download and generation run once and are reproducible.
 
-`SeedDataLoader` (runs on startup if `products` is empty): inserts categories, products and inventory, then embeds the guides in batches (`windowFixed`). Seed users: `admin/admin123` (ADMIN), `customer/customer123` (CUSTOMER), dev profile only.
+`SeedDataLoader` (`sales.seed.enabled`, on in the dev profile only): creates the seed users `admin/admin123` (ADMIN) and `customer/customer123` (CUSTOMER) when missing, loads categories, products and inventory in one transaction when `products` is empty, then embeds every guide that has no chunks yet (virtual threads, at most 4 at a time; `GuideIndexer` sends the chunks in `windowFixed` batches). A restart completes an interrupted load.
+
+The OpenAI key is read from the environment or from the git-ignored `.env` (`spring.config.import: optional:file:.env[.properties]`). The `test` profile switches the OpenAI models off (`spring.ai.model.*: none`) and uses the deterministic fakes in `support/FakeAiConfig`; `OpenAiIT` uses the real models and is skipped without a key.
 
 ### 2.9 API v1 endpoints
 
@@ -380,13 +382,13 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] Tests: unit tests for status transitions, insufficient stock, payment declined, cancel rules; integration test of the full async flow (Awaitility)
 
 ### Phase 8 - Seed data, search and AI
-- [ ] `SeedDataGenerator`: download from DummyJSON, map to 10 categories, generate detailed guides, write `seed/products.json` (committed; about 150-190 products). Source fields map to `tags` (array), `images` (array), `dimensions` (composite), and weight/warranty/shipping/return policy into `attributes` (jsonb)
-- [ ] `SeedDataLoader`: idempotent load + batched embeddings (`Gatherers.windowFixed`, custom chunking `Gatherer`, virtual threads)
-- [ ] Full-text, semantic and hybrid search (structured concurrency + RRF)
-- [ ] `ProductGuideChanged` re-embedding via Kafka
-- [ ] `POST /api/v1/ai/ask` RAG with sources
-- [ ] Tests: chunker/gatherer unit tests, RRF merge, search integration tests (fake `EmbeddingModel` in unit tests; real API in one integration test, skipped when no key)
-- [ ] Verified: every guide is at least 1,500 words; all 10 categories populated; every product has embeddings
+- [x] `SeedDataGenerator`: download from DummyJSON, map to 10 categories, generate detailed guides, write `seed/products.json` (committed; 167 products). Source fields map to `tags` (array), `images` (array), `dimensions` (composite), and weight/warranty/shipping/return policy into `attributes` (jsonb)
+- [x] `SeedDataLoader`: idempotent load + batched embeddings (`Gatherers.windowFixed`, custom chunking `Gatherer`, virtual threads)
+- [x] Full-text, semantic and hybrid search (structured concurrency + RRF)
+- [x] `ProductGuideChanged` re-embedding via Kafka
+- [x] `POST /api/v1/ai/ask` RAG with sources
+- [x] Tests: chunker/gatherer unit tests, RRF merge, search integration tests (fake `EmbeddingModel` in unit tests; real API in one integration test, skipped when no key), seed file checks (`SeedDataTest`)
+- [x] Verified: every guide is at least 1,500 words (1,826-3,013, average 2,275); all 10 categories populated; every product has embeddings (dev: 167 products, 3,170 chunks)
 
 ### Phase 9 - OpenAPI, Swagger and versioning
 - [ ] Spring API versioning configured (path segment, supported versions `1`, default rejects unknown versions with 400)

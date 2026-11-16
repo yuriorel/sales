@@ -3,6 +3,9 @@ spring:
     name: sales
   profiles:
     default: dev
+  config:
+    # local secrets such as OPENAI_API_KEY (git-ignored); real environment variables win
+    import: optional:file:.env[.properties]
   threads:
     virtual:
       enabled: true
@@ -33,6 +36,12 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:}
+      chat:
+        model: gpt-4.1-mini
+        temperature: 0.2
+      embedding:
+        # 1536 dimensions, matching product_guide_chunks.embedding
+        model: text-embedding-3-small
   security:
     oauth2:
       resourceserver:
@@ -57,6 +66,9 @@ sales:
   payment:
     # the mock payment gateway declines larger charges
     decline-above: 10000
+  seed:
+    # load seed/products.json into an empty catalog, embed missing guides, create demo users
+    enabled: false
 
 server:
   port: ${SALES_PORT:9443}

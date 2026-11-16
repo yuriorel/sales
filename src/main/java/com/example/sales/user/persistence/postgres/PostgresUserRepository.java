@@ -19,6 +19,7 @@ import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -86,6 +87,14 @@ class PostgresUserRepository implements UserRepository {
                 .param("externalId", externalId)
                 .query(userMapper)
                 .single();
+    }
+
+    @Override
+    public void setRoles(UUID id, Set<Role> roles) {
+        jdbc.sql("update users set roles = cast(:roles as varchar[]) where id = :id")
+                .param("id", id)
+                .param("roles", roles.stream().map(Role::name).sorted().toArray(String[]::new))
+                .update();
     }
 
     @Override

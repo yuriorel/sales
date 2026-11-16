@@ -10,6 +10,10 @@ E-commerce engine exposed as a versioned REST API. Java 25, Spring Boot 4.1, Pos
 ./mvnw spring-boot:run            # https://localhost:9443
 ```
 
+Needs `OPENAI_API_KEY` in the environment or in `.env`. On the first start the dev profile loads the seed catalog
+(`src/main/resources/seed/products.json`), embeds the user guides and creates the users `admin/admin123` and
+`customer/customer123`.
+
 Health: `https://localhost:9443/actuator/health`
 
 ## Test

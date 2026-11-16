@@ -5,6 +5,11 @@ sales:
     topic: sales_online_test
 
 spring:
+  ai:
+    # tests use the fakes in support/FakeAiConfig; OpenAiIT switches the real models back on
+    model:
+      chat: none
+      embedding: none
   data:
     redis:
       database: 1

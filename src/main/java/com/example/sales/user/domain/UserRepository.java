@@ -2,6 +2,7 @@ package com.example.sales.user.domain;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /// Persistence port for users.
@@ -17,6 +18,9 @@ public interface UserRepository {
 
     /// Inserts an `OAUTH2` user, or returns the existing row for `externalId`.
     User createOAuth2(String externalId, String username, String email);
+
+    /// Replaces the stored roles.
+    void setRoles(UUID id, Set<Role> roles);
 
     /// Replaces the default address (`null` clears it) and the preferences.
     User updateProfile(UUID id, PostalAddress defaultAddress, Map<String, Object> preferences);
