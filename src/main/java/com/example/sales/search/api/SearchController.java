@@ -18,7 +18,7 @@ import java.util.List;
 
 /// Public product search.
 @RestController
-@RequestMapping("/api/v1/search")
+@RequestMapping(path = "/search", version = "1")
 class SearchController {
 
     private static final Logger log = LoggerFactory.getLogger(SearchController.class);

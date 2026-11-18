@@ -9,6 +9,7 @@ import com.example.sales.catalog.domain.ProductSort;
 import com.example.sales.catalog.domain.ProductSummary;
 import com.example.sales.common.api.Page;
 import com.example.sales.common.error.ValidationException;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -34,7 +35,7 @@ import java.util.stream.Collectors;
 
 /// Products and stock: public reads, `ADMIN` writes (enforced in `SecurityConfig`).
 @RestController
-@RequestMapping("/api/v1/products")
+@RequestMapping(path = "/products", version = "1")
 class ProductController {
 
     private static final Logger log = LoggerFactory.getLogger(ProductController.class);
@@ -45,7 +46,7 @@ class ProductController {
         this.products = products;
     }
 
-    record StockRequest(@NotNull @Min(0) Integer quantity) {
+    record StockRequest(@Schema(example = "25") @NotNull @Min(0) Integer quantity) {
     }
 
     /// Lists products, filtered by category slug, tags (`tag=a&tag=b`, any of them, or

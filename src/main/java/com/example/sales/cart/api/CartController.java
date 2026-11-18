@@ -3,6 +3,7 @@ package com.example.sales.cart.api;
 import com.example.sales.cart.domain.Cart;
 import com.example.sales.cart.domain.CartService;
 import com.example.sales.user.domain.UserService;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /// The cart of the signed-in user.
 @RestController
-@RequestMapping("/api/v1/cart")
+@RequestMapping(path = "/cart", version = "1")
 class CartController {
 
     private static final Logger log = LoggerFactory.getLogger(CartController.class);
@@ -34,10 +35,12 @@ class CartController {
         this.users = users;
     }
 
-    record AddItemRequest(@NotNull @Positive Long productId, @NotNull @Positive Integer quantity) {
+    record AddItemRequest(
+            @Schema(example = "1") @NotNull @Positive Long productId,
+            @Schema(example = "2") @NotNull @Positive Integer quantity) {
     }
 
-    record QuantityRequest(@NotNull @Positive Integer quantity) {
+    record QuantityRequest(@Schema(example = "3") @NotNull @Positive Integer quantity) {
     }
 
     @GetMapping

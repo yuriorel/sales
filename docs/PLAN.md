@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phases 1-8 complete. Phase 9 (OpenAPI, Swagger and versioning) next.**
+Status: **Phases 1-9 complete. Phase 10 (end-to-end tests and hardening) next.**
 
 ## 0. Decisions and Assumptions
 
@@ -43,7 +43,7 @@ Status: **Phases 1-8 complete. Phase 9 (OpenAPI, Swagger and versioning) next.**
 | Messaging | Spring for Apache Kafka, topic `sales_online` |
 | Security | Spring Security: `httpBasic` + `oauth2ResourceServer(jwt)` |
 | API versioning | Spring Framework 7 built-in API versioning, path-segment strategy: `/api/v{version}/...` |
-| Docs | springdoc-openapi 3.2.0 (code-first): `/v3/api-docs`, `/swagger-ui.html` |
+| Docs | springdoc-openapi 3.2.0 (code-first): `/v3/api-docs/v1`, `/swagger-ui.html` |
 | Errors | RFC 9457 `ProblemDetail` |
 | Logging | Logback (`logback-spring.xml`), MDC correlation id, DEBUG for `com.example.sales` |
 | Tests | JUnit 5, AssertJ, Mockito, Spring Boot test slices, Playwright for Java 1.64 (E2E) |
@@ -391,9 +391,9 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] Verified: every guide is at least 1,500 words (1,826-3,013, average 2,275); all 10 categories populated; every product has embeddings (dev: 167 products, 3,170 chunks)
 
 ### Phase 9 - OpenAPI, Swagger and versioning
-- [ ] Spring API versioning configured (path segment, supported versions `1`, default rejects unknown versions with 400)
-- [ ] springdoc: `/v3/api-docs`, `/swagger-ui.html`, Basic + Bearer security schemes, grouped by version, examples on DTOs
-- [ ] Tests: unknown version `/api/v9/...` returns a problem response; api-docs contain all v1 paths
+- [x] Spring API versioning configured (path segment, supported versions `1`, default rejects unknown versions with 400). `ApiVersioningConfig` adds the prefix `/api/v{version}` to the application controllers, which declare `@RequestMapping(path = "/orders", version = "1")`
+- [x] springdoc: `/v3/api-docs`, `/swagger-ui.html`, Basic + Bearer security schemes, grouped by version, examples on DTOs. The `v1` group selects controllers by their declared version (springdoc filters paths before it substitutes `{version}`). `swagger-annotations-jakarta` is pinned to springdoc's swagger-core version, because Spring AI brings an older one
+- [x] Tests: unknown version `/api/v9/...` returns a problem response; api-docs contain all v1 paths (`ApiDocsIT`, also `v1.1` and `vx`)
 
 ### Phase 10 - End-to-end tests and hardening
 - [ ] Playwright for Java (`APIRequestContext`, ignore self-signed HTTPS) E2E suite in failsafe profile `e2e`, against the running server: register, login (Basic), update profile address, browse with tag/attribute filters, search (3 modes), cart, place order -> poll to CONFIRMED, insufficient stock -> REJECTED, cancel, admin product update -> cache evicted + re-embedded, AI ask, error formats, auth failures

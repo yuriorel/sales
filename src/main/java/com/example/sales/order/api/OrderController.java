@@ -27,7 +27,7 @@ import java.util.UUID;
 /// Orders of the signed-in user (all orders for `ADMIN`). Placing and cancelling are
 /// asynchronous: they answer `202 Accepted` and the client polls the order's status.
 @RestController
-@RequestMapping("/api/v1/orders")
+@RequestMapping(path = "/orders", version = "1")
 class OrderController {
 
     private static final Logger log = LoggerFactory.getLogger(OrderController.class);

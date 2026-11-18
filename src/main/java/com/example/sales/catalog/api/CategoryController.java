@@ -21,7 +21,7 @@ import java.util.List;
 
 /// Categories: public reads, `ADMIN` writes (enforced in `SecurityConfig`).
 @RestController
-@RequestMapping("/api/v1/categories")
+@RequestMapping(path = "/categories", version = "1")
 class CategoryController {
 
     private static final Logger log = LoggerFactory.getLogger(CategoryController.class);

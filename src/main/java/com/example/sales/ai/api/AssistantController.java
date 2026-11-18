@@ -2,6 +2,7 @@ package com.example.sales.ai.api;
 
 import com.example.sales.ai.domain.Answer;
 import com.example.sales.ai.domain.AssistantService;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /// Product questions answered from the user guides; signed-in users only.
 @RestController
-@RequestMapping("/api/v1/ai")
+@RequestMapping(path = "/ai", version = "1")
 class AssistantController {
 
     private static final Logger log = LoggerFactory.getLogger(AssistantController.class);
@@ -28,7 +29,9 @@ class AssistantController {
     }
 
     /// @param productId limits the answer to one product's guide; optional
-    record AskRequest(@NotBlank @Size(max = 1000) String question, @Positive Long productId) {
+    record AskRequest(
+            @Schema(example = "How do I pair the speaker with my phone?") @NotBlank @Size(max = 1000) String question,
+            @Schema(example = "1", description = "limits the answer to this product's guide") @Positive Long productId) {
     }
 
     @PostMapping("/ask")

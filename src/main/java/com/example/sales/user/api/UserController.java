@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping(path = "/users", version = "1")
 class UserController {
 
     private static final Logger log = LoggerFactory.getLogger(UserController.class);

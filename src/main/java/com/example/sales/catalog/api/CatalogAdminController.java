@@ -12,7 +12,7 @@ import java.util.List;
 
 /// Catalog statistics for `ADMIN` users.
 @RestController
-@RequestMapping("/api/v1/admin/stats")
+@RequestMapping(path = "/admin/stats", version = "1")
 class CatalogAdminController {
 
     private static final Logger log = LoggerFactory.getLogger(CatalogAdminController.class);
