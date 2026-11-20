@@ -1,6 +1,8 @@
 package com.example.sales.search.domain;
 
 import com.example.sales.catalog.domain.ProductRepository;
+import com.example.sales.catalog.domain.ProductService;
+import com.example.sales.common.cache.CacheAside;
 import com.example.sales.search.domain.GuideVectorStore.EmbeddedChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,11 +25,13 @@ public class GuideIndexer {
     private final ProductRepository products;
     private final GuideVectorStore store;
     private final EmbeddingModel embeddings;
+    private final CacheAside cache;
 
-    public GuideIndexer(ProductRepository products, GuideVectorStore store, EmbeddingModel embeddings) {
+    public GuideIndexer(ProductRepository products, GuideVectorStore store, EmbeddingModel embeddings, CacheAside cache) {
         this.products = products;
         this.store = store;
         this.embeddings = embeddings;
+        this.cache = cache;
     }
 
     /// A deleted product has nothing to index; its chunks were removed with it.
@@ -44,6 +48,8 @@ public class GuideIndexer {
                 .flatMap(batch -> embed(batch).stream())
                 .toList();
         store.replace(productId, embedded);
+        // the cached product details include the guide summary (embedded chunk count)
+        cache.evict(ProductService.cacheKey(productId));
         log.info("Indexed the guide of product {} as {} chunks", productId, embedded.size());
     }
 

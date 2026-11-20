@@ -15,6 +15,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.TimeoutException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import tools.jackson.databind.json.JsonMapper;
@@ -66,5 +67,17 @@ class KafkaEventPublisherTest {
         assertThatThrownBy(() -> publisher.publish(ProductGuideChanged.of(42)))
                 .isInstanceOf(EventPublishingException.class)
                 .hasCauseInstanceOf(TimeoutException.class);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void synchronousSendFailureIsPublishingException() {
+        // KafkaTemplate throws when the topic metadata is not available within max.block.ms
+        when(kafka.send(any(ProducerRecord.class)))
+                .thenThrow(new KafkaException("Send failed", new TimeoutException("Topic not present in metadata after 5000 ms")));
+
+        assertThatThrownBy(() -> publisher.publish(ProductGuideChanged.of(42)))
+                .isInstanceOf(EventPublishingException.class)
+                .hasCauseInstanceOf(KafkaException.class);
     }
 }

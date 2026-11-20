@@ -17,9 +17,13 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.jwt.JwtTypeValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
@@ -77,7 +81,9 @@ public class SecurityConfig {
     }
 
     /// Decodes broker tokens: keys from the JWKS endpoint (fetched over TLS with the
-    /// `oauth2-broker` SSL bundle), then issuer and expiry checks.
+    /// `oauth2-broker` SSL bundle), then expiry, issuer and type checks. The broker
+    /// issues RFC 9068 access tokens (`typ: at+jwt`), which the decoder's built-in
+    /// check (`typ: JWT` only) would reject.
     @Bean
     JwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
@@ -88,9 +94,18 @@ public class SecurityConfig {
                 .build();
         var decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
                 .restOperations(new RestTemplate(new JdkClientHttpRequestFactory(httpClient)))
+                .validateType(false)
                 .build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+        decoder.setJwtValidator(jwtValidator(issuer));
         return decoder;
+    }
+
+    /// Expiry, issuer, and `typ` of `JWT` or `at+jwt`.
+    public static OAuth2TokenValidator<Jwt> jwtValidator(String issuer) {
+        return new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(),
+                new JwtIssuerValidator(issuer),
+                new JwtTypeValidator("JWT", "at+jwt"));
     }
 
     @Bean

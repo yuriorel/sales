@@ -14,12 +14,13 @@ Needs `OPENAI_API_KEY` in the environment or in `.env`. On the first start the d
 (`src/main/resources/seed/products.json`), embeds the user guides and creates the users `admin/admin123` and
 `customer/customer123`.
 
-Health: `https://localhost:9443/actuator/health`
+Health: `https://localhost:9443/actuator/health`. API docs: `https://localhost:9443/swagger-ui.html`. A Postman collection and environment are in `postman/`.
 
 ## Test
 
 ```powershell
-./mvnw verify
+./mvnw verify          # unit + integration tests
+./mvnw -Pe2e verify    # end-to-end tests against the running server and OAuth2 broker
 ```
 
-Integration tests use the dev servers (schema `sales_online_test`, Redis DB 1). See `docs/PLAN.md` for the design.
+Integration tests use the dev servers (schema `sales_online_test`, Redis DB 1). See `docs/ARCHITECTURE.md` for the design.

@@ -2,7 +2,7 @@
 
 E-commerce engine exposed as a versioned REST API. Java 25 (preview enabled), Spring Boot 4.1, PostgreSQL + pgvector, Redis, Kafka.
 
-Status: **Phases 1-9 complete. Phase 10 (end-to-end tests and hardening) next.**
+Status: **All phases complete.**
 
 ## 0. Decisions and Assumptions
 
@@ -99,7 +99,7 @@ com.example.sales
 | Scoped values | `RequestContext` (correlation id, user id) bound per request in a filter and inherited by structured-concurrency subtasks. Also bound in the Kafka listener from the message headers. |
 | Flexible constructor bodies | Validation before `super(...)` in `SalesException` subclasses and in `Money` / value types. |
 | Markdown doc comments | `///` Javadoc on all public types. |
-| Mermaid diagrams | Section 3 here, maintained in `docs/ARCHITECTURE.md`. |
+| Mermaid diagrams | `docs/ARCHITECTURE.md`. |
 
 ### 2.4a PostgreSQL feature map (educational)
 
@@ -186,150 +186,7 @@ Errors: `application/problem+json` with `type`, `title`, `status`, `detail`, `in
 
 ## 3. Diagrams
 
-### 3.1 Class diagram (core domain)
-
-```mermaid
-classDiagram
-    direction LR
-    class SalesEvent {
-        <<sealed interface>>
-        +UUID eventId()
-        +Instant occurredAt()
-    }
-    class OrderPlaced { <<record>> UUID orderId }
-    class OrderCancelled { <<record>> UUID orderId; String reason }
-    class ProductGuideChanged { <<record>> long productId }
-    SalesEvent <|.. OrderPlaced
-    SalesEvent <|.. OrderCancelled
-    SalesEvent <|.. ProductGuideChanged
-
-    class EventPublisher { <<interface>> +publish(SalesEvent) }
-    class KafkaEventPublisher
-    EventPublisher <|.. KafkaEventPublisher
-    class KafkaEventListener
-    class EventDispatcher { +dispatch(SalesEvent) }
-    KafkaEventListener --> EventDispatcher
-    EventDispatcher --> OrderProcessor
-    EventDispatcher --> GuideIndexer
-
-    class ProductRepository { <<interface>> }
-    class OrderRepository { <<interface>> }
-    class GuideVectorStore { <<interface>> }
-    class PostgresProductRepository
-    class PostgresOrderRepository
-    class PgVectorGuideStore
-    ProductRepository <|.. PostgresProductRepository
-    OrderRepository <|.. PostgresOrderRepository
-    GuideVectorStore <|.. PgVectorGuideStore
-
-    class CatalogService
-    class OrderService
-    class SearchService
-    class AssistantService
-    CatalogService --> ProductRepository
-    CatalogService --> CacheAside
-    CatalogService --> EventPublisher
-    OrderService --> OrderRepository
-    OrderService --> EventPublisher
-    OrderProcessor --> OrderRepository
-    OrderProcessor --> PaymentGateway
-    SearchService --> ProductRepository
-    SearchService --> GuideVectorStore
-    AssistantService --> GuideVectorStore
-
-    class SalesException { <<sealed abstract>> }
-    class NotFoundException
-    class ConflictException
-    class ValidationException
-    SalesException <|-- NotFoundException
-    SalesException <|-- ConflictException
-    SalesException <|-- ValidationException
-```
-
-### 3.2 Sequence: asynchronous order placement
-
-```mermaid
-sequenceDiagram
-    actor C as Client
-    participant API as OrderController v1
-    participant OS as OrderService
-    participant DB as PostgreSQL
-    participant K as Kafka sales_online
-    participant L as KafkaEventListener
-    participant OP as OrderProcessor
-    participant PG as PaymentGateway (mock)
-
-    C->>API: POST /api/v1/orders (Basic or Bearer)
-    API->>OS: placeOrder(user, shippingAddress)
-    OS->>DB: insert order PENDING + items, clear cart (tx)
-    OS->>K: publish OrderPlaced(key=orderId)
-    API-->>C: 202 Accepted, Location /api/v1/orders/{id}
-    K-->>L: OrderPlaced
-    L->>OP: dispatch (ScopedValue correlationId bound)
-    OP->>DB: check processed_events (idempotency)
-    OP->>DB: reserve stock (conditional UPDATE)
-    alt stock reserved
-        OP->>PG: charge(total)
-        PG-->>OP: Approved / Declined
-        OP->>DB: status CONFIRMED / REJECTED, insert payment
-    else insufficient stock
-        OP->>DB: status REJECTED (reason)
-    end
-    C->>API: GET /api/v1/orders/{id}
-    API-->>C: 200 {status: CONFIRMED}
-```
-
-### 3.3 Sequence: cache-aside product read
-
-```mermaid
-sequenceDiagram
-    actor C as Client
-    participant S as CatalogService
-    participant R as Redis
-    participant DB as PostgreSQL
-    C->>S: GET /api/v1/products/{id}
-    S->>R: GET product:{id}
-    alt hit
-        R-->>S: json
-    else miss
-        S->>DB: select from v_product_catalog
-        DB-->>S: row
-        S->>R: SET product:{id} EX ttl
-    end
-    S-->>C: 200 ProductResponse
-```
-
-### 3.4 Database (schema `sales_online`)
-
-```mermaid
-erDiagram
-    users ||--o| carts : owns
-    users ||--o{ orders : places
-    categories ||--o{ products : contains
-    products ||--|| inventory : stocked
-    products ||--o{ product_guide_chunks : "embedded as"
-    carts ||--o{ cart_items : has
-    products ||--o{ cart_items : in
-    orders ||--o{ order_items : has
-    products ||--o{ order_items : in
-    orders ||--o| payments : paid_by
-
-    users { uuid id PK; varchar username UK; email_address email UK; varchar password_hash "null for OAUTH2"; varchar auth_provider "LOCAL|OAUTH2"; varchar external_id UK; varchar_array roles; postal_address default_address "composite"; jsonb preferences; timestamptz created_at }
-    categories { bigint id PK; varchar slug UK; varchar name; text description }
-    products { bigint id PK; sku_code sku UK; bigint category_id FK; varchar name; varchar brand; text description; money_amount price; currency_code currency; rating rating; text_array tags "GIN"; text_array image_urls; dimensions_cm dimensions "composite"; jsonb attributes "GIN jsonb_path_ops"; text user_guide; text_array guide_sections; tsvector search_vector "generated, GIN"; bigint version; timestamptz created_at; timestamptz updated_at }
-    inventory { bigint product_id PK; int quantity "check >= 0"; timestamptz updated_at }
-    product_guide_chunks { bigint id PK; bigint product_id FK; int chunk_index; text content; jsonb metadata; vector embedding "1536, HNSW" }
-    carts { uuid id PK; uuid user_id FK; timestamptz updated_at }
-    cart_items { uuid cart_id PK; bigint product_id PK; positive_qty quantity }
-    orders { uuid id PK; uuid user_id FK; order_status status; money_amount total; currency_code currency; postal_address shipping_address "composite"; jsonb status_history; timestamptz created_at; timestamptz updated_at }
-    order_items { uuid order_id PK; bigint product_id PK; varchar product_name; price_tag unit_price "composite"; positive_qty quantity }
-    payments { uuid id PK; uuid order_id FK; money_amount amount; varchar status; varchar reference; jsonb gateway_response; timestamptz created_at }
-    processed_events { uuid event_id PK; varchar event_type; jsonb payload; timestamptz processed_at }
-```
-
-The ER diagram writes array columns as `text_array` / `varchar_array`, because mermaid cannot render `text[]`. Custom domains and composite types are listed in section 2.4a.
-
-Views: `v_product_catalog`, `v_order_summary`, `v_category_stats` (see 2.4a). Indexes: GIN on `search_vector`, `tags` and `attributes`; HNSW on `embedding`; B-tree on `products(category_id)` and `orders(user_id, created_at desc)`.
+The final mermaid diagrams (classes, sequences for order placement, re-embedding, cache-aside read and authentication, and the database) are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 4. Implementation Phases
 
@@ -396,12 +253,16 @@ Each phase ends with a green `./mvnw verify` and a commit. Check off the criteri
 - [x] Tests: unknown version `/api/v9/...` returns a problem response; api-docs contain all v1 paths (`ApiDocsIT`, also `v1.1` and `vx`)
 
 ### Phase 10 - End-to-end tests and hardening
-- [ ] Playwright for Java (`APIRequestContext`, ignore self-signed HTTPS) E2E suite in failsafe profile `e2e`, against the running server: register, login (Basic), update profile address, browse with tag/attribute filters, search (3 modes), cart, place order -> poll to CONFIRMED, insufficient stock -> REJECTED, cancel, admin product update -> cache evicted + re-embedded, AI ask, error formats, auth failures
-- [ ] OAuth2 E2E with a real token from the external broker at `https://localhost:8443`
-- [ ] Playwright browser test: Swagger UI loads and lists the v1 endpoints
-- [ ] All found defects fixed; full `./mvnw verify` and E2E suite green
-- [ ] `docs/ARCHITECTURE.md` with the final mermaid diagrams
-- [ ] Server running on `https://localhost:9443` with seeded data, ready for use
+- [x] Playwright for Java (`APIRequestContext`, ignore self-signed HTTPS) E2E suite in failsafe profile `e2e`, against the running server: register, login (Basic), update profile address, browse with tag/attribute filters, search (3 modes), cart, place order -> poll to CONFIRMED, insufficient stock -> REJECTED, cancel, admin product update -> cache evicted + re-embedded, AI ask, error formats, auth failures (`ShopE2E`, fixture product `E2E-SPEAKER` in category `e2e`, reset on every run)
+- [x] OAuth2 E2E with a real token from the external broker at `https://localhost:8443` (`BrowserE2E`: Chromium signs in as `alice`, authorization code + PKCE with client `web-app`)
+- [x] Playwright browser test: Swagger UI loads and lists the v1 endpoints
+- [x] All found defects fixed; full `./mvnw verify` and E2E suite green. Defects found by the E2E suite:
+  - broker access tokens (`typ: at+jwt`, RFC 9068) were rejected; the decoder now accepts `JWT` and `at+jwt`, and `TestJwt` issues `at+jwt` through the production validator
+  - re-embedding did not evict `product:{id}`, so the guide summary stayed stale for up to 10 min
+  - a synchronous Kafka send failure (topic metadata timeout) was a `500` instead of `503`
+  - environment: a hand-recreated dev `v_order_summary` read `sales_online_test.order_items` (orders confirmed with no items); recreated from `V3__views.sql`. Kafka on Windows stopped in log compaction; fixed with `log.cleaner.enable=false`
+- [x] `docs/ARCHITECTURE.md` with the final mermaid diagrams
+- [x] Server running on `https://localhost:9443` with seeded data, ready for use
 
 ## 5. Definition of Done
 

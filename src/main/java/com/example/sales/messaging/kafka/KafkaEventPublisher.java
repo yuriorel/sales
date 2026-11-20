@@ -10,6 +10,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
@@ -49,6 +50,9 @@ class KafkaEventPublisher implements EventPublisher {
             log.debug("Published event {} to {}-{}@{}", event.eventId(), metadata.topic(), metadata.partition(), metadata.offset());
         } catch (CompletionException e) {
             throw new EventPublishingException(event, e.getCause());
+        } catch (KafkaException e) {
+            // thrown by send() itself, e.g. when the topic metadata cannot be fetched within max.block.ms
+            throw new EventPublishingException(event, e);
         }
     }
 }

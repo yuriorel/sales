@@ -15,12 +15,13 @@ Implementation follows `docs/PLAN.md`; phases are checked off there as they comp
 - Build + all tests: `./mvnw verify` (unit tests `*Test` via surefire, integration tests `*IT` via failsafe)
 - Unit tests only: `./mvnw test`
 - Single test: `./mvnw verify -Dit.test=HealthEndpointIT -Dtest=skip -Dsurefire.failIfNoSpecifiedTests=false` (integration) or `./mvnw test -Dtest=ClassName#method` (unit)
+- End-to-end tests (`*E2E`, Playwright) against the running server and the OAuth2 broker: `./mvnw -Pe2e verify` (unit and integration tests skipped). Install Chromium once: `./mvnw test-compile exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install chromium" -Dexec.classpathScope=test`
 - Generate TLS keystore (once): `./scripts/gen-cert.ps1` -> `config/tls/sales-keystore.p12`, `config/tls/sales.crt`
 - Trust the OAuth2 broker (once, broker running on `https://localhost:8443`): `./scripts/import-broker-cert.ps1` -> `config/tls/broker-truststore.p12`. Integration tests sign their own JWTs (`support/TestJwt`) but the SSL bundle file must exist
 - OpenAI key: `OPENAI_API_KEY` in the environment or in `.env` at the project root (git-ignored)
 - Regenerate the seed file (DummyJSON + OpenAI, minutes, paid API calls): `./mvnw -Pseed-generate spring-boot:run` -> `src/main/resources/seed/products.json` (committed; existing guides are reused)
 - Run: `./mvnw spring-boot:run` -> `https://localhost:9443` (profile `dev` by default)
-- Start Kafka: `D:\application\kafka_2.13-4.3.1\bin\windows\kafka-server-start.bat config\server.properties` (from the Kafka root). On Windows the broker can fail to start with `AccessDeniedException` on a `*.checkpoint` file: clear the read-only flag on the files in its log dir and start again.
+- Start Kafka: `D:\application\kafka_2.13-4.3.1\bin\windows\kafka-server-start.bat config\server.properties` (from the Kafka root). On Windows the broker can fail to start with `AccessDeniedException` on a `*.checkpoint` file: clear the read-only flag on the files in its log dir and start again. Log compaction fails on Windows (renaming memory-mapped index files, "being used by another process") and stops the broker; `config/server.properties` sets `log.cleaner.enable=false`, and leftover `*.cleaned` / `*.swap` files in the log dir must be deleted.
 
 ## Architecture
 

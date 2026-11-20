@@ -22,6 +22,7 @@
         <spring-ai.version>2.0.2</spring-ai.version>
         <springdoc.version>3.2.0</springdoc.version>
         <swagger-core.version>2.2.55</swagger-core.version>
+        <playwright.version>1.65.1</playwright.version>
         <preview.flag>--enable-preview</preview.flag>
     </properties>
 
@@ -122,6 +123,12 @@
             <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>${playwright.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -166,6 +173,34 @@
     </build>
 
     <profiles>
+        <!-- ./mvnw -Pe2e verify : end-to-end tests (*E2E) against the running server, unit tests skipped -->
+        <profile>
+            <id>e2e</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*E2E.java</include>
+                            </includes>
+                            <environmentVariables>
+                                <!-- only Chromium is used; install it once, see CLAUDE.md -->
+                                <PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD>1</PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD>
+                            </environmentVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- ./mvnw -Pseed-generate spring-boot:run : rebuilds src/main/resources/seed/products.json -->
         <profile>
             <id>seed-generate</id>
